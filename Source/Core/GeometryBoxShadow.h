@@ -34,7 +34,8 @@
 namespace Rml {
 
 class Geometry;
-struct Texture;
+class CallbackTexture;
+class RenderManager;
 
 class GeometryBoxShadow {
 public:
@@ -47,8 +48,8 @@ public:
 	/// @param[in] shadow_list The list of box-shadows to generate.
 	/// @param[in] border_radius The border radius of the element.
 	/// @param[in] opacity The opacity of the element.
-	static void Generate(Geometry& out_shadow_geometry, Texture& out_shadow_texture, Element* element, Geometry& background_border_geometry,
-		BoxShadowList shadow_list, Vector4f border_radius, float opacity);
+	static void Generate(RenderManager* render_manager, Geometry& out_shadow_geometry, CallbackTexture& out_shadow_texture, Element* element,
+		Geometry& background_border_geometry, BoxShadowList shadow_list, Vector4f border_radius, float opacity);
 };
 
 } // namespace Rml
