@@ -110,7 +110,7 @@ private:
 	void ApplyClipMask(const ClipMaskGeometryList& clip_elements);
 
 	StableVectorIndex InsertGeometry(Mesh&& mesh);
-	CompiledGeometryHandle GetCompiledGeometryHandle(StableVectorIndex index);
+	CompiledGeometryHandle GetCompiledGeometryHandle(StableVectorIndex index, bool& compile_attempted);
 
 	void Render(const Geometry& geometry, Vector2f translation, Texture texture, const CompiledShader& shader);
 
@@ -123,6 +123,8 @@ private:
 	Mesh ReleaseResource(const Geometry& geometry);
 	void ReleaseResource(const CompiledFilter& filter);
 	void ReleaseResource(const CompiledShader& shader);
+
+	void LogCompileGeometryError();
 
 	struct GeometryData {
 		Mesh mesh;
@@ -139,6 +141,8 @@ private:
 
 	RenderState state;
 	Vector2i viewport_dimensions;
+
+	bool logged_compile_geometry_error = false;
 
 	friend class RenderManagerAccess;
 };
