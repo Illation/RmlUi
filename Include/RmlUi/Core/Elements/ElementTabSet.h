@@ -43,6 +43,8 @@ namespace Rml {
 class RMLUICORE_API ElementTabSet : public Element
 {
 public:
+	static const String TABS_ID;
+
 	RMLUI_RTTI_DefineWithParent(ElementTabSet, Element)
 
 	ElementTabSet(const String& tag);
@@ -91,8 +93,29 @@ protected:
 
 private:
 	Element* GetChildByTag(const String& tag);
+	Element* GetTabsElement();
+
+	void ProcessTabClick(Event& evnt);
+
+	class TabListener : public EventListener
+	{
+	public:
+		virtual ~TabListener() = default;
+
+		void SetTabSet(ElementTabSet* const set) {
+			tabset = set;
+		}
+
+		void ProcessEvent(Event& evnt) override;
+
+	private:
+		ElementTabSet* tabset = nullptr;
+	};
+
+	friend class TabListener;
 
 	int active_tab;
+	TabListener listener;
 };
 
 } // namespace Rml

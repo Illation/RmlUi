@@ -32,9 +32,12 @@
 
 namespace Rml {
 
+const String ElementTabSet::TABS_ID("tabs-id");
+
 ElementTabSet::ElementTabSet(const String& tag) : Element(tag)
 {
 	active_tab = 0;
+	listener.SetTabSet(this);
 }
 
 ElementTabSet::~ElementTabSet()
@@ -59,8 +62,10 @@ void ElementTabSet::SetPanel(int tab_index, const String& rml)
 
 // Set the specifed tab index's title element.
 void ElementTabSet::SetTab(int tab_index, ElementPtr element)
-{	
-	Element* tabs = GetChildByTag("tabs");
+{
+	element->AddEventListener(EventId::Click, &listener);
+	
+	Element* tabs = GetTabsElement();
 	if (tab_index >= 0 &&
 		tab_index < tabs->GetNumChildren())
 		tabs->ReplaceChild(std::move(element), tabs->GetChild(tab_index));
@@ -87,7 +92,7 @@ void ElementTabSet::RemoveTab(int tab_index)
 		return;
 
 	Element* panels = GetChildByTag("panels");
-	Element* tabs = GetChildByTag("tabs");
+	Element* tabs = GetTabsElement();
 
 	if (panels->GetNumChildren() > tab_index &&
 		tabs->GetNumChildren() > tab_index)
@@ -100,7 +105,7 @@ void ElementTabSet::RemoveTab(int tab_index)
 // Retrieve the number of tabs in the tabset.
 int ElementTabSet::GetNumTabs()
 {
-	return GetChildByTag("tabs")->GetNumChildren();
+	return GetTabsElement()->GetNumChildren();
 }
 
 void ElementTabSet::SetActiveTab(int tab_index)
@@ -108,7 +113,7 @@ void ElementTabSet::SetActiveTab(int tab_index)
 	// Update display if the tab has changed
 	if (tab_index != active_tab)
 	{
-		Element* tabs = GetChildByTag("tabs");
+		Element* tabs = GetTabsElement();
 		Element* old_tab = tabs->GetChild(active_tab);
 		Element* new_tab = tabs->GetChild(tab_index);
 
@@ -146,7 +151,7 @@ void ElementTabSet::ProcessDefaultAction(Event& event)
 	if (event == EventId::Click)
 	{
 		// Find the tab that this click occured on
-		Element* tabs = GetChildByTag("tabs");
+		Element* tabs = GetTabsElement();
 		Element* tab = event.GetTargetElement();
 		while (tab && tab != this && tab->GetParentNode() != tabs)
 			tab = tab->GetParentNode();
@@ -174,7 +179,7 @@ void ElementTabSet::OnChildAdd(Element* child)
 {
 	Element::OnChildAdd(child);
 
-	if (child->GetParentNode() == GetChildByTag("tabs"))
+	if (child->GetParentNode() == GetTabsElement())
 	{
 		// Set up the new button and append it
 		child->RemoveProperty(PropertyId::Display);
@@ -207,6 +212,48 @@ Element* ElementTabSet::GetChildByTag(const String& tag)
 	ElementPtr element = Factory::InstanceElement(this, "*", tag, XMLAttributes());
 	Element* result = AppendChild(std::move(element));
 	return result;
+}
+
+Rml::Element* ElementTabSet::GetTabsElement()
+{
+	String const tabsId = GetAttribute<std::string>(TABS_ID, "");
+	if (tabsId.empty())
+	{
+		return GetChildByTag("tabs");
+	}
+
+	return GetOwnerDocument()->GetElementById(tabsId);
+}
+
+void ElementTabSet::ProcessTabClick(Event& event)
+{
+	RMLUI_ASSERT(event.GetId() == EventId::Click);
+
+	Element* tabs = GetTabsElement();
+	Element* tab = event.GetTargetElement();
+
+	RMLUI_ASSERT(tab->GetParentNode() == tabs);
+
+	// Determine the new active tab index
+	int new_active_tab = active_tab;
+	for (int i = 0; i < tabs->GetNumChildren(); i++)
+	{
+		if (tabs->GetChild(i) == tab)
+		{
+			new_active_tab = i;
+			break;
+		}
+	}
+
+	SetActiveTab(new_active_tab);
+}
+
+void ElementTabSet::TabListener::ProcessEvent(Event& event)
+{
+	if (tabset != nullptr)
+	{
+		tabset->ProcessTabClick(event);
+	}
 }
 
 
