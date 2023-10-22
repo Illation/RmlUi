@@ -138,6 +138,12 @@ public:
 	/// Right now, this only applies to the 'data-for' view.
 	/// @return True if a data view was constructed.
 	static bool ApplyStructuralDataViews(Element* element, const String& inner_rml);
+
+	/// Instantiates a templates content into the target element
+	/// @param[out] The target element that will act as parent to the template content
+	/// @param[in] the file path for the template
+	/// @return True if template was successfully instantiated
+	static bool ParseTemplateIntoElement(Element* element, const String& template_path);
 };
 
 } // namespace Rml

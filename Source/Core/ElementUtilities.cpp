@@ -40,6 +40,8 @@
 #include "ElementStyle.h"
 #include "LayoutDetails.h"
 #include "LayoutEngine.h"
+#include "Template.h"
+#include "TemplateCache.h"
 #include "TransformState.h"
 #include <limits>
 
@@ -498,5 +500,20 @@ bool ElementUtilities::ApplyStructuralDataViews(Element* element, const String& 
 {
 	return ApplyDataViewsControllersInternal(element, true, inner_rml);
 }
+
+
+bool ElementUtilities::ParseTemplateIntoElement(Element* element, const String& template_path)
+{
+	Template* const loadedTemplate = TemplateCache::LoadTemplate(template_path);
+	if (loadedTemplate)
+	{
+		loadedTemplate->ParseTemplate(element);
+		return true;
+	}
+
+	Log::Message(Log::LT_WARNING, "Failed to load template '%s' into element '%s'", template_path.c_str(), element->GetAddress().c_str());
+	return false;
+}
+
 
 } // namespace Rml
