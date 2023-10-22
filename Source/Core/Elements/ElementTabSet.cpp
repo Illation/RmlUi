@@ -27,6 +27,7 @@
  */
 
 #include "../../../Include/RmlUi/Core/Elements/ElementTabSet.h"
+#include "../../../Include/RmlUi/Core/ElementDocument.h"
 #include "../../../Include/RmlUi/Core/Math.h"
 #include "../../../Include/RmlUi/Core/Factory.h"
 

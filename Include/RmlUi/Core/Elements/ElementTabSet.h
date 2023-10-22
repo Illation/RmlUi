@@ -31,6 +31,7 @@
 
 #include "../Element.h"
 #include "../Header.h"
+#include "../EventListener.h"
 
 namespace Rml {
 
