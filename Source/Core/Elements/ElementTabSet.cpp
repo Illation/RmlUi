@@ -62,28 +62,34 @@ void ElementTabSet::SetPanel(int tab_index, const String& rml)
 }
 
 // Set the specifed tab index's title element.
-void ElementTabSet::SetTab(int tab_index, ElementPtr element)
+Element* ElementTabSet::SetTab(int tab_index, ElementPtr element)
 {
 	element->AddEventListener(EventId::Click, &listener);
 	
 	Element* tabs = GetTabsElement();
 	if (tab_index >= 0 &&
 		tab_index < tabs->GetNumChildren())
+	{
 		tabs->ReplaceChild(std::move(element), tabs->GetChild(tab_index));
+		return tabs->GetChild(tab_index);
+	}
 	else
-		tabs->AppendChild(std::move(element));
+		return tabs->AppendChild(std::move(element));
 }
 
 // Set the specified tab index's body element.
-void ElementTabSet::SetPanel(int tab_index, ElementPtr element)
+Element* ElementTabSet::SetPanel(int tab_index, ElementPtr element)
 {	
 	// append the window
 	Element* windows = GetChildByTag("panels");
 	if (tab_index >= 0 &&
 		tab_index < windows->GetNumChildren())
+	{
 		windows->ReplaceChild(std::move(element), windows->GetChild(tab_index));
+		return windows->GetChild(tab_index);
+	}
 	else
-		windows->AppendChild(std::move(element));
+		return windows->AppendChild(std::move(element));
 }
 
 // Remove one of the tab set's panels and its corresponding tab.
