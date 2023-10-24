@@ -63,11 +63,11 @@ public:
 	/// Set the specifed tab index's title element.
 	/// @param[in] tab_index The tab index to set. If it doesn't already exist, it will be created.
 	/// @param[in] element The root of the element tree to set as the tab title.
-	void SetTab(int tab_index, ElementPtr element);
+	Element* SetTab(int tab_index, ElementPtr element);
 	/// Set the specified tab index's body element.
 	/// @param[in] tab_index The tab index to set. If it doesn't already exist, it will be created.
 	/// @param[in] element The root of the element tree to set as the window.
-	void SetPanel(int tab_index, ElementPtr element);
+	Element* SetPanel(int tab_index, ElementPtr element);
 
 	/// Remove one of the tab set's panels and its corresponding tab.
 	/// @param[in] tab_index The tab index to remove. If no tab matches this index, nothing will be removed.

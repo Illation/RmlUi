@@ -140,6 +140,7 @@ public:
 	static bool ApplyStructuralDataViews(Element* element, const String& inner_rml);
 
 	/// Instantiates a templates content into the target element
+	/// the target element should be appended to the DOM for data bindings to work correctly
 	/// @param[out] The target element that will act as parent to the template content
 	/// @param[in] the file path for the template
 	/// @return True if template was successfully instantiated
