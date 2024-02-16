@@ -144,7 +144,7 @@ public:
 	/// @param[out] The target element that will act as parent to the template content
 	/// @param[in] the file path for the template
 	/// @return True if template was successfully instantiated
-	static bool ParseTemplateIntoElement(Element* element, const String& template_path);
+	static bool ParseTemplateIntoElement(Element* element, const String& template_path, Element*& contentElement);
 };
 
 } // namespace Rml
