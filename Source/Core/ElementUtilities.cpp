@@ -502,12 +502,18 @@ bool ElementUtilities::ApplyStructuralDataViews(Element* element, const String& 
 }
 
 
-bool ElementUtilities::ParseTemplateIntoElement(Element* element, const String& template_path)
+bool ElementUtilities::ParseTemplateIntoElement(Element* element, const String& template_path, Element*& contentElement)
 {
+	contentElement = nullptr;
 	Template* const loadedTemplate = TemplateCache::LoadTemplate(template_path);
 	if (loadedTemplate)
 	{
-		loadedTemplate->ParseTemplate(element);
+		Element* const outEl = loadedTemplate->ParseTemplate(element);
+		if (outEl != element)
+		{
+			contentElement = outEl;
+		}
+
 		return true;
 	}
 
