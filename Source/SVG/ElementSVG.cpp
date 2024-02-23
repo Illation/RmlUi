@@ -30,30 +30,36 @@
 #include "../../Include/RmlUi/Core/ComputedValues.h"
 #include "../../Include/RmlUi/Core/Core.h"
 #include "../../Include/RmlUi/Core/ElementDocument.h"
-#include "../../Include/RmlUi/Core/FileInterface.h"
-#include "../../Include/RmlUi/Core/GeometryUtilities.h"
 #include "../../Include/RmlUi/Core/Math.h"
 #include "../../Include/RmlUi/Core/PropertyIdSet.h"
 #include "../../Include/RmlUi/Core/SystemInterface.h"
+
 #include <cmath>
-#include <lunasvg.h>
 #include <string.h>
+
+#include "SVGCache.h"
 
 namespace Rml {
 
 
-ElementSVG::ElementSVG(const String& tag) : Element(tag), geometry(this)
+ElementSVG::ElementSVG(const String& tag) : Element(tag), geometry(nullptr)
 {
 }
 
 ElementSVG::~ElementSVG()
 {
+	if (handle != 0u)
+	{
+		SVG::SVGCache::ReleaseHandle(handle);
+	}
 }
 
 bool ElementSVG::GetIntrinsicDimensions(Vector2f& dimensions, float& ratio)
 {
-	if (source_dirty)
-		LoadSource();
+	if (source_path.empty() && !source_dirty)
+		return false;
+
+	UpdateCachedData();
 
 	dimensions = intrinsic_dimensions;
 
@@ -72,20 +78,16 @@ bool ElementSVG::GetIntrinsicDimensions(Vector2f& dimensions, float& ratio)
 
 void ElementSVG::OnRender()
 {
-	if (svg_document)
+	UpdateCachedData();
+	if (geometry)
 	{
-		if (geometry_dirty)
-			GenerateGeometry();
-
-		UpdateTexture();
-		geometry.Render(GetAbsoluteOffset(Box::CONTENT));
+		geometry->Render(GetAbsoluteOffset(Box::CONTENT));
 	}
 }
 
 void ElementSVG::OnResize()
 {
-	geometry_dirty = true;
-	texture_dirty = true;
+	is_dirty = true;
 }
 
 void ElementSVG::OnAttributeChange(const ElementAttributes& changed_attributes)
@@ -111,109 +113,72 @@ void ElementSVG::OnPropertyChange(const PropertyIdSet& changed_properties)
 
 	if (changed_properties.Contains(PropertyId::ImageColor) ||
 		changed_properties.Contains(PropertyId::Opacity)) {
-		geometry_dirty = true;
+		is_dirty = true;
 	}
 }
 
-void ElementSVG::GenerateGeometry()
+void ElementSVG::UpdateCachedData()
 {
-	geometry.Release(true);
+	if (!is_dirty || !source_dirty)
+		return;
 
-	Vector< Vertex >& vertices = geometry.GetVertices();
-	Vector< int >& indices = geometry.GetIndices();
+	if (source_dirty)
+	{
+		const String attribute_src = GetAttribute<String>("src", "");
 
-	vertices.resize(4);
-	indices.resize(6);
+		if (!attribute_src.empty())
+		{
+			source_path = attribute_src;
 
-	Vector2f texcoords[2] = {
-		{0.0f, 0.0f},
-		{1.0f, 1.0f}
-	};
+			if (ElementDocument* document = GetOwnerDocument())
+			{
+				const String document_source_url = StringUtilities::Replace(document->GetSourceURL(), '|', ':');
+				GetSystemInterface()->JoinPath(source_path, document_source_url, attribute_src);
+			}
+		}
+	}
+
+	if (source_path.empty())
+	{
+		if (handle != 0u)
+		{
+			SVG::SVGCache::ReleaseHandle(handle);
+		}
+
+		geometry = nullptr;
+		intrinsic_dimensions.x = 0.f;
+		intrinsic_dimensions.y = 0.f;
+		return;
+	}
 
 	const ComputedValues& computed = GetComputedValues();
 
 	const float opacity = computed.opacity();
-	Colourb quad_colour = computed.image_color();
-	quad_colour.alpha = (byte)(opacity * (float)quad_colour.alpha);
+	Colourb colour = computed.image_color();
+	colour.alpha = (byte)(opacity * (float)colour.alpha);
 
 	const Vector2f render_dimensions_f = GetBox().GetSize(Box::CONTENT).Round();
 	render_dimensions.x = int(render_dimensions_f.x);
 	render_dimensions.y = int(render_dimensions_f.y);
 
-	GeometryUtilities::GenerateQuad(&vertices[0], &indices[0], Vector2f(0, 0), render_dimensions_f, quad_colour, texcoords[0], texcoords[1]);
-
-	geometry_dirty = false;
-}
-
-bool ElementSVG::LoadSource()
-{
-	source_dirty = false;
-	texture_dirty = true;
-	intrinsic_dimensions = Vector2f{};
-	geometry.SetTexture(nullptr);
-	svg_document.reset();
-
-	const String attribute_src = GetAttribute<String>("src", "");
-
-	if (attribute_src.empty())
-		return false;
-
-	String path = attribute_src;
-	String directory;
-
-	if (ElementDocument* document = GetOwnerDocument())
+	SVG::SVGHandle const new_handle = SVG::SVGCache::GetHandle(source_path, render_dimensions, colour);
+	if (new_handle == 0u)
 	{
-		const String document_source_url = StringUtilities::Replace(document->GetSourceURL(), '|', ':');
-		GetSystemInterface()->JoinPath(path, document_source_url, attribute_src);
-		GetSystemInterface()->JoinPath(directory, document_source_url, "");
-	}
-
-	String svg_data;
-
-	if (path.empty() || !GetFileInterface()->LoadFile(path, svg_data))
-	{
-		Log::Message(Rml::Log::Type::LT_WARNING, "Could not load SVG file %s", path.c_str());
-		return false;
-	}
-
-	// We use a reset-release approach here in case clients use a non-std unique_ptr (lunasvg uses std::unique_ptr)
-	svg_document.reset(lunasvg::Document::loadFromData(svg_data).release());
-
-	if (!svg_document)
-	{
-		Log::Message(Rml::Log::Type::LT_WARNING, "Could not load SVG data from file %s", path.c_str());
-		return false;
-	}
-
-	intrinsic_dimensions.x = Math::Max(float(svg_document->width()), 1.0f);
-	intrinsic_dimensions.y = Math::Max(float(svg_document->height()), 1.0f);
-
-	return true;
-}
-
-void ElementSVG::UpdateTexture()
-{
-	if (!svg_document || !texture_dirty)
+		geometry = nullptr;
+		intrinsic_dimensions.x = 0.f;
+		intrinsic_dimensions.y = 0.f;
 		return;
+	}
 
-	// Callback for generating texture.
-	auto p_callback = [this](const String& /*name*/, UniquePtr<const byte[]>& data, Vector2i& dimensions) -> bool {
-		RMLUI_ASSERT(svg_document);
+	geometry = SVG::SVGCache::GetGeometry(new_handle, intrinsic_dimensions);
 
-		const size_t total_bytes = 4 * render_dimensions.x * render_dimensions.y;
+	if (handle != 0u)
+	{
+		SVG::SVGCache::ReleaseHandle(handle);
+	}
 
-		lunasvg::Bitmap bitmap = svg_document->renderToBitmap(render_dimensions.x, render_dimensions.y);
-
-		data.reset(new byte[total_bytes]);
-		memcpy((void*)data.get(), bitmap.data(), total_bytes);
-		dimensions = render_dimensions;
-
-		return true;
-	};
-
-	texture.Set("svg", p_callback);
-	geometry.SetTexture(&texture);
-	texture_dirty = false;
+	handle = new_handle;
+	is_dirty = false;
 }
 
 } // namespace Rml
