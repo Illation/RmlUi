@@ -4,7 +4,7 @@
  * For the latest information, see http://github.com/mikke89/RmlUi
  *
  * Copyright (c) 2008-2010 CodePoint Ltd, Shift Technology Ltd
- * Copyright (c) 2019 The RmlUi Team, and contributors
+ * Copyright (c) 2019-2023 The RmlUi Team, and contributors
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -15,7 +15,7 @@
  *
  * The above copyright notice and this permission notice shall be included in
  * all copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -31,21 +31,17 @@
 
 #include "../Element.h"
 #include "../Header.h"
-#include "../EventListener.h"
 
 namespace Rml {
 
 /**
-	A tabulated set of panels.
+    A tabulated set of panels.
 
-	@author Lloyd Weehuizen
+    @author Lloyd Weehuizen
  */
 
-class RMLUICORE_API ElementTabSet : public Element
-{
+class RMLUICORE_API ElementTabSet : public Element {
 public:
-	static const String TABS_ID;
-
 	RMLUI_RTTI_DefineWithParent(ElementTabSet, Element)
 
 	ElementTabSet(const String& tag);
@@ -63,11 +59,11 @@ public:
 	/// Set the specifed tab index's title element.
 	/// @param[in] tab_index The tab index to set. If it doesn't already exist, it will be created.
 	/// @param[in] element The root of the element tree to set as the tab title.
-	Element* SetTab(int tab_index, ElementPtr element);
+	void SetTab(int tab_index, ElementPtr element);
 	/// Set the specified tab index's body element.
 	/// @param[in] tab_index The tab index to set. If it doesn't already exist, it will be created.
 	/// @param[in] element The root of the element tree to set as the window.
-	Element* SetPanel(int tab_index, ElementPtr element);
+	void SetPanel(int tab_index, ElementPtr element);
 
 	/// Remove one of the tab set's panels and its corresponding tab.
 	/// @param[in] tab_index The tab index to remove. If no tab matches this index, nothing will be removed.
@@ -94,29 +90,8 @@ protected:
 
 private:
 	Element* GetChildByTag(const String& tag);
-	Element* GetTabsElement();
-
-	void ProcessTabClick(Event& evnt);
-
-	class TabListener : public EventListener
-	{
-	public:
-		virtual ~TabListener() = default;
-
-		void SetTabSet(ElementTabSet* const set) {
-			tabset = set;
-		}
-
-		void ProcessEvent(Event& evnt) override;
-
-	private:
-		ElementTabSet* tabset = nullptr;
-	};
-
-	friend class TabListener;
 
 	int active_tab;
-	TabListener listener;
 };
 
 } // namespace Rml
