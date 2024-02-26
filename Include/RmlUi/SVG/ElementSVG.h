@@ -76,7 +76,6 @@ private:
 	Vector2f intrinsic_dimensions;
 
 	// The element's size for rendering.
-	Vector2i render_dimensions;
 	String source_path;
 };
 

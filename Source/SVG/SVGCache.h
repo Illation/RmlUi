@@ -29,13 +29,19 @@
 #ifndef RMLUI_SVG_SVG_CACHE_H
 #define RMLUI_SVG_SVG_CACHE_H
 
+#include "../../Include/RmlUi/Core/Box.h"
 #include "../../Include/RmlUi/SVG/SVGTypes.h"
 
 namespace Rml {
 
 class Geometry;
+class Element;
 
 namespace SVG {
+
+/**
+	@author Leah Lindner
+ */
 
 class SVGCache
 {
@@ -45,9 +51,17 @@ public:
 	/// Returns a handle to some SVG data matching the parameters - creates new data if none is found
 	/// @param[in] source Path to a file containing the SVG source data
 	/// @param[in] dimensions Size of the computed texture to provide for rendering
+	/// @param[in] content_fit Crop the rendered svg to the scale of it's content
 	/// @param[in] colour Colour for the computed geometry
 	/// @return A valid handle to the SVG data, or 0 if there is a problem with the SVG data
-	static SVGHandle GetHandle(const String& source, const Vector2i& dimensions, const Colourb colour);
+	static SVGHandle GetHandle(const String& source, const Vector2i& dimensions, const bool content_fit, const Colourb colour);
+
+	/// Returns a handle to some SVG data matching the parameters - creates new data if none is found
+	/// @param[in] source Path to a file containing the SVG source data
+	/// @param[in] element Element for which to calculate the dimensions and colour
+	/// @param[in] content_fit Crop the rendered svg to the scale of it's content
+	/// @return A valid handle to the SVG data, or 0 if there is a problem with the SVG data
+	static SVGHandle GetHandle(const String& source, Element* const element, const bool content_fit, const Box::Area area);
 
 	/// Decreases the ref count for a specific set of the SVG data, and deletes the data if there are no more users
 	/// When changing colour or dimensions of an SVG without changing the source file, it's best to get a new handle
