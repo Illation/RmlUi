@@ -31,7 +31,9 @@
 
 #include "../../Include/RmlUi/Core/Geometry.h"
 #include "../../Include/RmlUi/Core/Texture.h"
+#include "../../Include/RmlUi/Core/ComputedValues.h"
 #include "../../Include/RmlUi/Core/Core.h"
+#include "../../Include/RmlUi/Core/Element.h"
 #include "../../Include/RmlUi/Core/FileInterface.h"
 #include "../../Include/RmlUi/Core/GeometryUtilities.h"
 #include "../../Include/RmlUi/Core/Utilities.h"
@@ -77,6 +79,7 @@ struct Handle
 
 	Geometry* geometry = nullptr;
 	Vector2i dimensions;
+	Vector2f intrinsic_dimensions;
 	String source;
 };
 
@@ -174,7 +177,7 @@ SVGHandle SVGCache::GetHandle(const String& source, const Vector2i& dimensions, 
 						RMLUI_ASSERT(dimensions.x != 0);
 						RMLUI_ASSERT(dimensions.y != 0);
 
-						lunasvg::Box const smallest_fit = svg_document->box();
+						const lunasvg::Box smallest_fit = svg_document->box();
 
 						lunasvg::Matrix matrix(dimensions.x / svg_document->width(), 0, 0, dimensions.y / svg_document->height(), 0, 0);
 						matrix.scale(svg_document->width() / smallest_fit.w, svg_document->height() / smallest_fit.h);
@@ -210,9 +213,7 @@ SVGHandle SVGCache::GetHandle(const String& source, const Vector2i& dimensions, 
 				return col_el.colour == colour;
 			});
 		if (found_colour != tex_size.colours.cend())
-		{
 			found_colour->ref_count++;
-		}
 		else
 		{
 			SVGDoc::Size::Colour coloured_geo;
@@ -246,6 +247,14 @@ SVGHandle SVGCache::GetHandle(const String& source, const Vector2i& dimensions, 
 		svg_handle.geometry = found_colour->geometry.get();
 		svg_handle.dimensions = dimensions;
 		svg_handle.source = source;
+		if (content_fit)
+		{
+			const lunasvg::Box smallest_fit = doc.svg_document->box();
+			svg_handle.intrinsic_dimensions.x = static_cast<float>(smallest_fit.w);
+			svg_handle.intrinsic_dimensions.y = static_cast<float>(smallest_fit.h);
+		}
+		else
+			svg_handle.intrinsic_dimensions = doc.intrinsic_dimensions;
 
 		handles[handle] = svg_handle;
 	}
@@ -320,10 +329,7 @@ Geometry* SVGCache::GetGeometry(const SVGHandle handle, Vector2f& intrinsic_dime
 	if (found_it == handles.cend())
 		return nullptr;
 
-	auto const found_doc = documents.find(found_it->second.source);
-	RMLUI_ASSERT(found_doc != documents.cend());
-	intrinsic_dimensions = found_doc->second.intrinsic_dimensions;
-
+	intrinsic_dimensions = found_it->second.intrinsic_dimensions;
 	return found_it->second.geometry;
 }
 
