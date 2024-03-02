@@ -69,6 +69,7 @@ private:
 
 	bool is_dirty = false;
 	bool source_dirty = false;
+
 	SVG::SVGHandle handle = 0;
 
 	Geometry* geometry = nullptr;
@@ -77,6 +78,7 @@ private:
 
 	// The element's size for rendering.
 	String source_path;
+	bool content_fit = false;
 };
 
 } // namespace Rml
