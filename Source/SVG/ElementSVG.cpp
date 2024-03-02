@@ -100,6 +100,13 @@ void ElementSVG::OnAttributeChange(const ElementAttributes& changed_attributes)
 		DirtyLayout();
 	}
 
+	if (changed_attributes.count("crop-to-content"))
+	{
+		content_fit = GetAttribute<bool>("crop-to-content", false);
+		is_dirty = true;
+		DirtyLayout();
+	}
+
 	if (changed_attributes.find("width") != changed_attributes.end() ||
 		changed_attributes.find("height") != changed_attributes.end())
 	{
@@ -151,17 +158,7 @@ void ElementSVG::UpdateCachedData()
 		return;
 	}
 
-	const ComputedValues& computed = GetComputedValues();
-
-	const float opacity = computed.opacity();
-	Colourb colour = computed.image_color();
-	colour.alpha = (byte)(opacity * (float)colour.alpha);
-
-	const Vector2f render_dimensions_f = GetBox().GetSize(Box::CONTENT).Round();
-	render_dimensions.x = int(render_dimensions_f.x);
-	render_dimensions.y = int(render_dimensions_f.y);
-
-	SVG::SVGHandle const new_handle = SVG::SVGCache::GetHandle(source_path, render_dimensions, colour);
+	SVG::SVGHandle const new_handle = SVG::SVGCache::GetHandle(source_path, this, content_fit, Box::CONTENT);
 	if (new_handle == 0u)
 	{
 		geometry = nullptr;

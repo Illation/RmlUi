@@ -31,7 +31,9 @@
 
 #include "../../Include/RmlUi/Core/Geometry.h"
 #include "../../Include/RmlUi/Core/Texture.h"
+#include "../../Include/RmlUi/Core/ComputedValues.h"
 #include "../../Include/RmlUi/Core/Core.h"
+#include "../../Include/RmlUi/Core/Element.h"
 #include "../../Include/RmlUi/Core/FileInterface.h"
 #include "../../Include/RmlUi/Core/GeometryUtilities.h"
 #include "../../Include/RmlUi/Core/Utilities.h"
@@ -56,6 +58,7 @@ struct SVGDoc
 
 		// The requested display dimensions of the element or decorator
 		Vector2i render_dimensions; 
+		bool content_fit;
 		UniquePtr<Texture> texture;
 		ColourList colours;
 	};
@@ -76,6 +79,7 @@ struct Handle
 
 	Geometry* geometry = nullptr;
 	Vector2i dimensions;
+	Vector2f intrinsic_dimensions;
 	String source;
 };
 
@@ -98,13 +102,14 @@ void SVGCache::Deninitialize()
 	handles.clear();
 }
 
-SVGHandle SVGCache::GetHandle(const String& source, const Vector2i& dimensions, const Colourb colour)
+SVGHandle SVGCache::GetHandle(const String& source, const Vector2i& dimensions, const bool content_fit, const Colourb colour)
 {
 	// generate handle
 	SVGHandle handle = 0u;
 	Utilities::HashCombine(handle, source);
 	Utilities::HashCombine(handle, dimensions.x);
 	Utilities::HashCombine(handle, dimensions.y);
+	Utilities::HashCombine(handle, content_fit);
 	Utilities::HashCombine(handle, *reinterpret_cast<uint16_t const*>(&colour));
 	
 	auto const found_handle = handles.find(handle);
@@ -155,17 +160,37 @@ SVGHandle SVGCache::GetHandle(const String& source, const Vector2i& dimensions, 
 		{
 			SVGDoc::Size tex_size;
 			tex_size.render_dimensions = dimensions;
+			tex_size.content_fit = content_fit;
 			tex_size.texture = MakeUnique<Texture>();
 
 			// Callback for generating texture.
 			auto p_callback = 
-				[svg_document = doc.svg_document.get(), &dimensions](const String& /*name*/, UniquePtr<const byte[]>& data, Vector2i& dim) -> bool 
+				[svg_document = doc.svg_document.get(), dimensions, content_fit](const String& /*name*/, UniquePtr<const byte[]>& data, Vector2i& dim)
 				{
 					RMLUI_ASSERT(svg_document);
 
 					const size_t total_bytes = 4 * dimensions.x * dimensions.y;
 
-					lunasvg::Bitmap bitmap = svg_document->renderToBitmap(dimensions.x, dimensions.y);
+					lunasvg::Bitmap bitmap;
+					if (content_fit)
+					{
+						RMLUI_ASSERT(dimensions.x != 0);
+						RMLUI_ASSERT(dimensions.y != 0);
+
+						const lunasvg::Box smallest_fit = svg_document->box();
+
+						lunasvg::Matrix matrix(dimensions.x / svg_document->width(), 0, 0, dimensions.y / svg_document->height(), 0, 0);
+						matrix.scale(svg_document->width() / smallest_fit.w, svg_document->height() / smallest_fit.h);
+						matrix.translate(-smallest_fit.x, -smallest_fit.y);
+
+						bitmap = lunasvg::Bitmap(dimensions.x, dimensions.y);
+						bitmap.clear(0x00000000);
+						svg_document->render(bitmap, matrix);
+					}
+					else
+					{
+						bitmap = svg_document->renderToBitmap(dimensions.x, dimensions.y);
+					}
 
 					data.reset(new byte[total_bytes]);
 					memcpy((void*)data.get(), bitmap.data(), total_bytes);
@@ -188,9 +213,7 @@ SVGHandle SVGCache::GetHandle(const String& source, const Vector2i& dimensions, 
 				return col_el.colour == colour;
 			});
 		if (found_colour != tex_size.colours.cend())
-		{
 			found_colour->ref_count++;
-		}
 		else
 		{
 			SVGDoc::Size::Colour coloured_geo;
@@ -224,11 +247,32 @@ SVGHandle SVGCache::GetHandle(const String& source, const Vector2i& dimensions, 
 		svg_handle.geometry = found_colour->geometry.get();
 		svg_handle.dimensions = dimensions;
 		svg_handle.source = source;
+		if (content_fit)
+		{
+			const lunasvg::Box smallest_fit = doc.svg_document->box();
+			svg_handle.intrinsic_dimensions.x = static_cast<float>(smallest_fit.w);
+			svg_handle.intrinsic_dimensions.y = static_cast<float>(smallest_fit.h);
+		}
+		else
+			svg_handle.intrinsic_dimensions = doc.intrinsic_dimensions;
 
 		handles[handle] = svg_handle;
 	}
 
 	return handle;
+}
+
+SVGHandle SVGCache::GetHandle(const String& source, Element* const element, const bool content_fit, const Box::Area area)
+{
+	const ComputedValues& computed = element->GetComputedValues();
+
+	const float opacity = computed.opacity();
+	Colourb colour = computed.image_color();
+	colour.alpha = (byte)(opacity * (float)colour.alpha);
+
+	const Vector2f dimensions_f = element->GetBox().GetSize(area).Round();
+
+	return GetHandle(source, Vector2i(static_cast<int>(dimensions_f.x), static_cast<int>(dimensions_f.y)), content_fit, colour);
 }
 
 void SVGCache::ReleaseHandle(const SVGHandle handle)
@@ -285,10 +329,7 @@ Geometry* SVGCache::GetGeometry(const SVGHandle handle, Vector2f& intrinsic_dime
 	if (found_it == handles.cend())
 		return nullptr;
 
-	auto const found_doc = documents.find(found_it->second.source);
-	RMLUI_ASSERT(found_doc != documents.cend());
-	intrinsic_dimensions = found_doc->second.intrinsic_dimensions;
-
+	intrinsic_dimensions = found_it->second.intrinsic_dimensions;
 	return found_it->second.geometry;
 }
 

@@ -35,6 +35,7 @@
 #include "../../Include/RmlUi/Core/Plugin.h"
 
 #include "SVGCache.h"
+#include "DecoratorSVGInstancer.h"
 
 namespace Rml {
 namespace SVG {
@@ -44,9 +45,11 @@ class SVGPlugin : public Plugin {
 public:
 	void OnInitialise() override
 	{
-		instancer = MakeUnique<ElementInstancerGeneric<ElementSVG> >();
-		
-		Factory::RegisterElementInstancer("svg", instancer.get());
+		element_instancer = MakeUnique<ElementInstancerGeneric<ElementSVG> >();
+		Factory::RegisterElementInstancer("svg", element_instancer.get());
+
+		decorator_instancer = MakeUnique<DecoratorSVGInstancer>();
+		Factory::RegisterDecoratorInstancer("svg", decorator_instancer.get());
 
 		Log::Message(Log::LT_INFO, "SVG plugin initialised.");
 	}
@@ -64,7 +67,8 @@ public:
 	}
 
 private:
-	UniquePtr<ElementInstancerGeneric<ElementSVG>> instancer;
+	UniquePtr<ElementInstancerGeneric<ElementSVG>> element_instancer;
+	UniquePtr<DecoratorSVGInstancer> decorator_instancer;
 };
 
 
